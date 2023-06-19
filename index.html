@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script type="text/javascript" src="js/phaser.min.js"></script>
+</head>
+<style>
+    body {
+        margin: 0;
+    }
+
+    canvas {
+        margin: 0 auto;
+    }
+</style>
+<body>
+    <script type="text/javascript">
+        var gameHeight = window.innerHeight;
+        var gameWidth = window.innerWidth;
+        const contentDiv = document.getElementById('content');
+        var game = new Phaser.Game(gameWidth, gameHeight, Phaser.AUTO, '', { preload: preload, create: create, update: update });
+        function preload() {
+            game.load.image('ball', 'ball.png');
+            game.load.image('hoop', 'hoop.png');
+            game.load.image('side rim', 'side_rim.png');
+            game.load.image('front rim', 'front_rim.png');
+
+        }
+        var hoop,
+            left_rim,
+            right_rim,
+            ball,
+            front_rim,
+            current_score = 0;
+        var collisionGroup;
+        function create() {
+            var xpos = (gameWidth - 224) / 2;
+            game.physics.startSystem(Phaser.Physics.P2JS);
+            game.physics.p2.setImpactEvents(true);
+            game.physics.p2.restitution = 0.63;
+            game.physics.p2.gravity.y = 0;
+            collisionGroup = game.physics.p2.createCollisionGroup();
+            game.stage.backgroundColor = "#ffffff";
+            hoop = game.add.sprite(xpos, 62, 'hoop'); // 141, 100
+            left_rim = game.add.sprite(xpos + 62, 184, 'side rim'); // 241, 296
+            right_rim = game.add.sprite(xpos + 161, 184, 'side rim'); // 398, 296
+            game.physics.p2.enable([left_rim, right_rim], false);
+            left_rim.body.setCircle(2.5);
+            left_rim.body.static = true;
+            left_rim.body.setCollisionGroup(collisionGroup);
+            left_rim.body.collides([collisionGroup]);
+            right_rim.body.setCircle(2.5);
+            right_rim.body.static = true;
+            right_rim.body.setCollisionGroup(collisionGroup);
+            right_rim.body.collides([collisionGroup]);
+            createBall();
+            cursors = game.input.keyboard.createCursorKeys();
+            game.input.onDown.add(click, this);
+            game.input.onUp.add(release, this);
+        }
+        function update() {
+            var xpos = (gameWidth - 224) / 2;
+            if (ball && ball.body.velocity.y > 0) {
+                front_rim = game.add.sprite(xpos + 60, 182, 'front rim');
+                front_rim.alpha = 0;
+                ball.body.collides([collisionGroup], hitRim, this);
+            }
+            if (ball && ball.body.velocity.y > 0 && ball.body.y > 188 && !ball.isBelowHoop) {
+                ball.isBelowHoop = true;
+                ball.body.collideWorldBounds = false;
+                if (ball.body.x > xpos + 63 && ball.body.x < xpos + 161) {
+                    current_score = 1;
+                } 
+                else {
+                    current_score = 0;
+                }
+            }
+            if (current_score === 1) {
+                current_score=0;
+                console.log(current_score);
+                var tween1 = game.add.tween(hoop);
+                tween1.to({ y: -300 }, 100, Phaser.Easing.Linear.None);
+                left_rim.alpha = 0;
+                right_rim.alpha = 0;
+                tween1.loop(false);
+                tween1.start();
+
+                if (ball && ball.body.velocity.y > 0) {
+                    window.location.href = 'next button.html';
+                }
+            }
+            else {
+                if (ball && ball.body.y > 1200) {
+                    game.physics.p2.gravity.y = 0;
+                    ball.kill();
+                    createBall();
+                    console.log(current_score);
+                }
+            }
+        }
+        function hitRim() {
+        }
+        function createBall() {
+            var xpos = gameWidth / 2;
+            ball = game.add.sprite(xpos, 547, 'ball');
+            game.add.tween(ball.scale).from({ x: 0.7, y: 0.7 }, 100, Phaser.Easing.Linear.None, true, 0, 0, false);
+            game.physics.p2.enable(ball, false);
+            ball.body.setCircle(60);
+            ball.launched = false;
+            ball.isBelowHoop = false;
+
+        }
+        var location_interval;
+        var isDown = false;
+        var start_location;
+        var end_location;
+        function click(pointer) {
+            var bodies = game.physics.p2.hitTest(pointer.position, [ball.body]);
+            if (bodies.length) {
+                start_location = [pointer.x, pointer.y];
+                isDown = true;
+                location_interval = setInterval(function () {
+                    start_location = [pointer.x, pointer.y];
+                }.bind(this), 200);
+            }
+
+        }
+        function release(pointer) {
+            if (isDown) {
+                window.clearInterval(location_interval);
+                isDown = false;
+                end_location = [pointer.x, pointer.y];
+
+                if (end_location[1] < start_location[1]) {
+                    var slope = [end_location[0] - start_location[0], end_location[1] - start_location[1]];
+                    var x_traj = -2300 * slope[0] / slope[1];
+                    launch(x_traj);
+                }
+            }
+        }
+        function launch(x_traj) {
+            if (ball.launched === false) {
+                ball.body.setCircle(36);
+                ball.body.setCollisionGroup(collisionGroup);
+                ball.launched = true;
+                game.physics.p2.gravity.y = 3000;
+                game.add.tween(ball.scale).to({ x: 0.6, y: 0.6 }, 500, Phaser.Easing.Linear.None, true, 0, 0, false);
+                ball.body.velocity.x = x_traj;
+                ball.body.velocity.y = -1750;
+                ball.body.rotateRight(x_traj / 3);
+            }
+        }
+
+    </script>
+</body>
+</html>
